@@ -1,0 +1,32 @@
+name: go-utils-toxi-proxy
+kind: pipeline
+type: docker
+
+clone:
+  git:
+    image: plugins/git
+    recursive: true
+
+steps:
+  - name: submodules
+    image: alpine/git
+    commands:
+      - git submodule init
+      - git submodule update --recursive --remote
+
+  - name: build-publish-image
+    image: plugins/docker:18
+    settings:
+      repo: rlien/go-utils-toxi-proxy
+      dockerfile: cmd/toxi-proxy/Dockerfile
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tags:
+        - latest
+
+trigger:
+  event:
+    - push
+

@@ -5,6 +5,6 @@ import (
 )
 
 func Hello()  {
-	log.Println("hello")
+	log.Println("hello~~")
 
 }

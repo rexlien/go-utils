@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	toxiproxy "github.com/Shopify/toxiproxy/client"
-	xln_utils "github.com/rexlien/go-utils/xln-utils"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,10 +16,14 @@ import (
 
 func main() {
 
-	xln_utils.Hello()
+	path := os.Getenv("XLN_TOXIPROXY_CONFIG_PATH")
+	if len(path) == 0 {
+		path = "config.json"
+	}
+
 
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	finished := make(chan bool, 1)
 	go func() {
 		sig := <- sigs
@@ -28,7 +32,12 @@ func main() {
 		finished <- true
 	}()
 
-	command := exec.Command("toxiproxy-server")
+	command := exec.Command("cmd")
+
+	var outb, errb bytes.Buffer
+	command.Stdout = &outb
+	command.Stderr = &errb
+
 	err := command.Start()
 	if err != nil {
 		panic(err)
@@ -46,18 +55,22 @@ func main() {
 		done <- command.Wait()
 	}()
 
+
+
 	select {
-	case <-time.After(5 * time.Second):
-		panic("timeout")
+	case <- time.After(3 * time.Second):
 	case err := <-done:
-		panic(err)
-	default:
+		if  err != nil &&  err.(*exec.ExitError) != nil {
+			log.Println(errb.String())
+			panic(err)
+		}
 
 	}
+	//time.Sleep(3 * time.Second)
 
 	client := toxiproxy.NewClient("127.0.0.1:8474")
 	var config []toxiproxy.Proxy
-	data, err := ioutil.ReadFile("config.json")
+	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
@@ -67,6 +80,17 @@ func main() {
 		panic(err)
 	}
 	log.Println(len(proxies))
+
+	//client.Proxies().
+	for _, proxy := range config  {
+		proxyName := proxy.Name
+		for _, toxics := range proxy.ActiveToxics {
+			proxyMap, _ := client.Proxies()
+			proxyMap[proxyName].AddToxic(toxics.Name, toxics.Type, toxics.Stream, toxics.Toxicity, toxics.Attributes)
+		}
+
+	}
+
 
 
 	<- finished

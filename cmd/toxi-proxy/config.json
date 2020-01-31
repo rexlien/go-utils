@@ -1,0 +1,22 @@
+[
+  {
+    "name": "dev-etcd",
+    "listen": "127.0.0.1:52379",
+    "upstream": "127.0.0.1:2379",
+    "enabled": true,
+    "toxics" :
+  [
+    {
+      "name": "latency",
+      "type": "latency",
+      "stream": "downstream",
+      "toxicity": 1.0,
+      "attributes": {
+        "latency": 500,
+        "jitter": 1500
+      }
+    }
+  ]
+
+  }
+]

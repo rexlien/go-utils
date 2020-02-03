@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	toxiproxy "github.com/Shopify/toxiproxy/client"
@@ -34,9 +33,9 @@ func main() {
 
 	command := exec.Command("cmd")
 
-	var outb, errb bytes.Buffer
-	command.Stdout = &outb
-	command.Stderr = &errb
+	//var outb, errb bytes.Buffer
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
 
 	err := command.Start()
 	if err != nil {
@@ -61,7 +60,7 @@ func main() {
 	case <- time.After(3 * time.Second):
 	case err := <-done:
 		if  err != nil &&  err.(*exec.ExitError) != nil {
-			log.Println(errb.String())
+			//log.Println(errb.String())
 			panic(err)
 		}
 

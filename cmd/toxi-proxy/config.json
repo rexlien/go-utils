@@ -13,10 +13,45 @@
       "toxicity": 1.0,
       "attributes": {
         "latency": 500,
-        "jitter": 1500
+        "jitter": 2000
       }
     }
   ]
-
+  },
+  {
+    "name": "dev-redis",
+    "listen": "127.0.0.1:53001",
+    "upstream": "127.0.0.1:30001",
+    "enabled": true,
+    "toxics": [
+      {
+        "name": "latency",
+        "type": "latency",
+        "stream": "downstream",
+        "toxicity": 1.0,
+        "attributes": {
+          "latency": 500,
+          "jitter": 2000
+        }
+      }
+    ]
+  },
+  {
+    "name": "dev-mongodb",
+    "listen": "127.0.0.1:53002",
+    "upstream": "127.0.0.1:30002",
+    "enabled": true,
+    "toxics": [
+      {
+        "name": "latency",
+        "type": "latency",
+        "stream": "downstream",
+        "toxicity": 1.0,
+        "attributes": {
+          "latency": 500,
+          "jitter": 2000
+        }
+      }
+    ]
   }
 ]

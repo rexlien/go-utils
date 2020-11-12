@@ -1,0 +1,3 @@
+[submodule "xln-proto"]
+	path = xln-proto
+	url = https://github.com/rexlien/xln-proto.git

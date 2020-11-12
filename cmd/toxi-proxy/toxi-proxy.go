@@ -2,16 +2,19 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	toxiproxy "github.com/Shopify/toxiproxy/client"
+	"github.com/gin-gonic/gin"
+	"github.com/rexlien/go-utils/go-utils/xln-proto/build/gen/proxypb/proxypb"
+
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"os/signal"
-	"syscall"
+	"strconv"
 	"time"
 )
+
+import _ "github.com/gin-gonic/gin"
 
 func main() {
 
@@ -20,7 +23,25 @@ func main() {
 		path = "config.json"
 	}
 
+	httpPort, err := strconv.Atoi(os.Getenv("XLN_TOXI_PROXY_HTTP_PORT"))
+	if err != nil {
+		httpPort = 38474
+	}
 
+
+	proxy := proxypb.Config{}
+	proxy.String()
+
+	//appPort, err := strconv.Atoi(os.Getenv("XLN_TOXI_PROXY_APP_PORT"))
+	//if(err != nil) {
+	//	appPort = 8080
+	//}
+
+
+
+	//proxypb.Config{}
+
+/*
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	finished := make(chan bool, 1)
@@ -30,14 +51,14 @@ func main() {
 		fmt.Println(sig)
 		finished <- true
 	}()
-
+*/
 	command := exec.Command("cmd")
 
 	//var outb, errb bytes.Buffer
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
 
-	err := command.Start()
+	err = command.Start()
 	if err != nil {
 		panic(err)
 	}
@@ -92,7 +113,11 @@ func main() {
 
 
 
-	<- finished
+
+
+//	<- finished
+	r := gin.Default()
+	r.Run(":" + strconv.Itoa(httpPort))
 
 
 

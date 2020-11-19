@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.35.8
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang/protobuf v1.4.1
-	google.golang.org/grpc v1.33.1 // indirect
+	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.0.1 // indirect
 	google.golang.org/protobuf v1.25.0
 )

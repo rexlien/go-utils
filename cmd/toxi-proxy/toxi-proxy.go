@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/gin-gonic/gin"
 	"github.com/rexlien/go-utils/go-utils/xln-proto/build/gen/proxypb/proxypb"
-
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -16,6 +19,32 @@ import (
 
 import _ "github.com/gin-gonic/gin"
 
+
+
+type RequestProcess struct {
+
+	request *proxypb.ProxyMatchRequest
+	response chan *proxypb.ProxyMatchResponse
+
+}
+
+type server struct {
+	proxypb.UnimplementedProxyServiceServer
+	reqChannel chan *RequestProcess
+	//responseChannel chan *proxypb.ProxyMatchResponse
+}
+
+func (s* server) MatchProxy(context context.Context, req *proxypb.ProxyMatchRequest) (*proxypb.ProxyMatchResponse, error) {
+
+	process := &RequestProcess{request: req, response: make (chan *proxypb.ProxyMatchResponse)}
+	s.reqChannel <- process
+
+
+	response := <- process.response
+	return response, nil
+}
+
+
 func main() {
 
 	path := os.Getenv("XLN_TOXIPROXY_CONFIG_PATH")
@@ -23,14 +52,17 @@ func main() {
 		path = "config.json"
 	}
 
-	httpPort, err := strconv.Atoi(os.Getenv("XLN_TOXI_PROXY_HTTP_PORT"))
-	if err != nil {
-		httpPort = 38474
+	httpPort := os.Getenv("XLN_TOXI_PROXY_HTTP_PORT")
+	if httpPort == "" {
+		httpPort = ":38474"
+	}
+
+	grpcPort := os.Getenv("XLN_TOXI_PROXY_GRPC_PORT")
+	if grpcPort == "" {
+		grpcPort = ":39090"
 	}
 
 
-	proxy := proxypb.Config{}
-	proxy.String()
 
 	//appPort, err := strconv.Atoi(os.Getenv("XLN_TOXI_PROXY_APP_PORT"))
 	//if(err != nil) {
@@ -58,7 +90,7 @@ func main() {
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
 
-	err = command.Start()
+	err := command.Start()
 	if err != nil {
 		panic(err)
 	}
@@ -111,13 +143,77 @@ func main() {
 
 	}
 
+	proxyReqChannel := make(chan *RequestProcess, 50)
+
+	go func() {
+		list, err := net.Listen("tcp", grpcPort)
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
+		s := grpc.NewServer()
+
+		reflection.Register(s)
+		proxypb.RegisterProxyServiceServer(s, &server{reqChannel: proxyReqChannel})
+		if err:= s.Serve(list); err != nil {
+			log.Fatalf("failed to serve grpc: %v", err)
+		}
+
+	}()
 
 
+
+
+	go func() {
+
+		client := toxiproxy.NewClient("127.0.0.1:8474")
+
+		//freeList := list.New()
+		portMap := make(map[string]string)
+
+		initPort := 55000
+
+		for {
+			select {
+				case process := <-proxyReqChannel:
+					{
+						//retProxy := make([]*proxypb.Proxy, 0)
+						for _, proxy := range process.request.Proxies {
+							for i, host:= range proxy.UpStreamHosts {
+								nextListen := ""
+
+								mapKey := proxy.Name + strconv.Itoa(i)
+
+								nextListen, ok := portMap[proxy.Name + strconv.Itoa(i)]
+								if  !ok {
+									nextListen = "127.0.0.1:" + strconv.Itoa(initPort)
+									portMap[mapKey] = nextListen
+									initPort++
+								}
+
+								_, err := client.CreateProxy(proxy.Name, nextListen, host)
+								if err != nil {
+									log.Println("proxy create failed")
+								}
+
+								//fixed to matched listen proxy for response
+								proxy.UpStreamHosts[i] = nextListen
+							}
+						}
+						response := &proxypb.ProxyMatchResponse{Proxies: process.request.Proxies}
+						process.response <- response
+
+					}
+			}
+		}
+
+
+
+	}()
 
 
 //	<- finished
 	r := gin.Default()
-	r.Run(":" + strconv.Itoa(httpPort))
+	r.Run(httpPort)
 
 
 

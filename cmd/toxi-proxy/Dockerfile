@@ -9,6 +9,6 @@ COPY go.mod go.mod
 RUN export GO111MODULE="on" && go mod download
 COPY . .
 RUN chmod +x xln-proto/protoGen-go.sh && sh xln-proto/protoGen-go.sh
-RUN export GO111MODULE="on" && go build cmd/toxi-proxy/toxi-proxy.go
+RUN export GO111MODULE="on" && go build -o $GOPATH/bin/toxi-proxy cmd/toxi-proxy/toxi-proxy.go
 
 CMD ["toxi-proxy"]

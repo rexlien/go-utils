@@ -6,6 +6,7 @@ import (
 	toxiproxy "github.com/Shopify/toxiproxy/client"
 	"github.com/gin-gonic/gin"
 	"github.com/rexlien/go-utils/go-utils/xln-proto/build/gen/proxypb/proxypb"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"io/ioutil"
@@ -45,7 +46,28 @@ func (s* server) MatchProxy(context context.Context, req *proxypb.ProxyMatchRequ
 }
 
 
+func getFreePort() (port int, err error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer listener.Close()
+
+	addr := listener.Addr().String()
+	_, portString, err := net.SplitHostPort(addr)
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.Atoi(portString)
+}
+
 func main() {
+
+	logger, _ := zap.NewProduction()
+	sugar := logger.Sugar()
+
+	defer logger.Sync()
 
 	path := os.Getenv("XLN_TOXIPROXY_CONFIG_PATH")
 	if len(path) == 0 {
@@ -123,25 +145,25 @@ func main() {
 	client := toxiproxy.NewClient("127.0.0.1:8474")
 	var config []toxiproxy.Proxy
 	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		panic(err)
-	}
-	json.Unmarshal(data, &config)
-	proxies, err := client.Populate(config)
-	if err != nil {
-		panic(err)
-	}
-	log.Println(len(proxies))
-
-	//client.Proxies().
-	for _, proxy := range config  {
-		proxyName := proxy.Name
-		for _, toxics := range proxy.ActiveToxics {
-			proxyMap, _ := client.Proxies()
-			proxyMap[proxyName].AddToxic(toxics.Name, toxics.Type, toxics.Stream, toxics.Toxicity, toxics.Attributes)
+	if err == nil {
+		//panic(err)
+		json.Unmarshal(data, &config)
+		proxies, err := client.Populate(config)
+		if err != nil {
+			panic(err)
 		}
+		log.Println(len(proxies))
 
+		for _, proxy := range config  {
+			proxyName := proxy.Name
+			for _, toxics := range proxy.ActiveToxics {
+				proxyMap, _ := client.Proxies()
+				proxyMap[proxyName].AddToxic(toxics.Name, toxics.Type, toxics.Stream, toxics.Toxicity, toxics.Attributes)
+			}
+
+		}
 	}
+
 
 	proxyReqChannel := make(chan *RequestProcess, 50)
 
@@ -170,7 +192,7 @@ func main() {
 		//freeList := list.New()
 		portMap := make(map[string]string)
 
-		initPort := 55000
+		//initPort := 55000
 
 		for {
 			select {
@@ -185,15 +207,23 @@ func main() {
 
 								nextListen, ok := portMap[proxy.Name + strconv.Itoa(i)]
 								if  !ok {
-									nextListen = "127.0.0.1:" + strconv.Itoa(initPort)
-									portMap[mapKey] = nextListen
-									initPort++
+									port, err := getFreePort()
+									if err == nil {
+										nextListen = "127.0.0.1:" + strconv.Itoa(port)
+										portMap[mapKey] = nextListen
+										//initPort++
+									}
 								}
 
-								_, err := client.CreateProxy(proxy.Name, nextListen, host)
+								toxiProxy, err := client.CreateProxy(mapKey, nextListen, host)
 								if err != nil {
-									log.Println("proxy create failed")
+									sugar.Infof("proxy create failed: %s", nextListen)
+								} else {
+									//TODO: hardcoded toxic
+									toxiProxy.AddToxic("Random Latency","latency", "downStream", 1.0, toxiproxy.Attributes{"latency": 500,
+										"jitter": 2000})
 								}
+
 
 								//fixed to matched listen proxy for response
 								proxy.UpStreamHosts[i] = nextListen

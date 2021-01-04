@@ -81,6 +81,10 @@ func (pq *PriorityQueue) Dequeue() Comparable {
 	return heap.Pop(pq.internal).(*Item).Value
 }
 
+func (pq *PriorityQueue) Len() int {
+	return pq.internal.Len()
+}
+
 
 func NewPriorityQueue() *PriorityQueue {
 	newPq := internal.NewQueue()

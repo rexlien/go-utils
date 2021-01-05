@@ -1,7 +1,8 @@
-package priority_queue_test
+package container_test
 
 import (
-	utils "github.com/rexlien/go-utils/xln-utils/container"
+	"github.com/rexlien/go-utils/xln-utils/common"
+	"github.com/rexlien/go-utils/xln-utils/container"
 	"testing"
 )
 
@@ -9,13 +10,14 @@ type item struct {
 	value int
 }
 
-func (i *item) Less(j utils.Comparable) bool {
+func (i *item) Less(j common.Comparable) bool {
 	return i.value < j.(*item).value
 }
 
 func TestPriority(t *testing.T) {
 
-	pq := utils.NewPriorityQueue()
+
+	pq := container.NewPriorityQueue()
 	pq.Enqueue(&item{value: 1})
 	pq.Enqueue(&item{value: 0})
 

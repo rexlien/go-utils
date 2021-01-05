@@ -1,11 +1,8 @@
 package internal
 
-import priority_queue "github.com/rexlien/go-utils/xln-utils/container"
+import "github.com/rexlien/go-utils/xln-utils/common"
 
-
-
-//type PriorityQueue []*priorityqueue.Item
-type PriorityQueue []*priority_queue.Item
+type PriorityQueue []*common.PqItem
 func (pq PriorityQueue) Len() int { return len(pq) }
 
 func (pq PriorityQueue) Less(i, j int) bool {
@@ -23,7 +20,7 @@ func (pq PriorityQueue) Swap(i, j int) {
 
 func (pq *PriorityQueue) Push(x interface{}) {
 	n := len(*pq)
-	item := x.(*priority_queue.Item)
+	item := x.(*common.PqItem)
 	item.SetIndex(n)
 	*pq = append(*pq, item)
 

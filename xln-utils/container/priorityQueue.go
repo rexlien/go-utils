@@ -1,10 +1,11 @@
-package priority_queue
+package container
 
 import (
 	"container/heap"
-	"github.com/rexlien/go-utils/xln-utils/container/internal"
+	common "github.com/rexlien/go-utils/xln-utils/common"
+	internal "github.com/rexlien/go-utils/xln-utils/internal"
 )
-
+/*
 type Comparable interface {
 	Less(j Comparable) bool
 }
@@ -23,11 +24,15 @@ func (item *Item) SetIndex(index int) {
 func (item *Item) Index() int {
 	return item.index
 }
+*/
+//type TestType int
 
 type PriorityQueue struct {
 
 	internal *internal.PriorityQueue
+
 }
+
 
 // A PriorityQueue implements heap.Interface and holds Items.
 
@@ -64,21 +69,21 @@ func (pq *PriorityQueue) Pop() interface{} {
 }
 */
 // update modifies the priority and value of an Item in the queue.
-func (pq *PriorityQueue) Update(item *Item) {
+func (pq *PriorityQueue) Update(item *common.PqItem) {
 	heap.Fix(pq.internal, item.Index())
 }
 
-func (pq *PriorityQueue) PopItem() *Item {
-	return heap.Pop(pq.internal).(*Item)
+func (pq *PriorityQueue) PopItem() *common.PqItem {
+	return heap.Pop(pq.internal).(*common.PqItem)
 
 }
 
-func (pq* PriorityQueue) Enqueue(comparable Comparable) {
-	heap.Push(pq.internal, &Item{Value: comparable})
+func (pq* PriorityQueue) Enqueue(comparable common.Comparable) {
+	heap.Push(pq.internal, &common.PqItem{Value: comparable})
 }
 
-func (pq *PriorityQueue) Dequeue() Comparable {
-	return heap.Pop(pq.internal).(*Item).Value
+func (pq *PriorityQueue) Dequeue() common.Comparable {
+	return heap.Pop(pq.internal).(*common.PqItem).Value
 }
 
 func (pq *PriorityQueue) Len() int {

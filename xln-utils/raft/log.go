@@ -18,6 +18,10 @@ type Logs struct {
 
 }
 
+func NewLogs() *Logs {
+	logs := &Logs{Log: make([]interface{}, 0)}
+	return logs
+}
 
 func LogEntryToString(entries []*LogEntry) string {
 
@@ -39,6 +43,8 @@ func ToString(entries []interface{}) string {
 
 	return res
 }
+
+
 
 func (lgs *Logs) GetEntries(from int, to int) []interface{} {
 

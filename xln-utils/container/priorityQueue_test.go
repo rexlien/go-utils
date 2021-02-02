@@ -1,8 +1,8 @@
-package container_test
+package container
 
 import (
 	"github.com/rexlien/go-utils/xln-utils/common"
-	"github.com/rexlien/go-utils/xln-utils/container"
+	//"github.com/rexlien/go-utils/xln-utils/container"
 	"testing"
 )
 
@@ -17,7 +17,7 @@ func (i *item) Less(j common.Comparable) bool {
 func TestPriority(t *testing.T) {
 
 
-	pq := container.NewPriorityQueue()
+	pq := NewPriorityQueue()
 	pq.Enqueue(&item{value: 1})
 	pq.Enqueue(&item{value: 0})
 

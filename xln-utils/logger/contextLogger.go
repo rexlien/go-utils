@@ -1,9 +1,9 @@
 package logger
 
-
 import (
 	"context"
 	"go.uber.org/zap"
+	"os"
 )
 import "go.uber.org/zap/zapcore"
 
@@ -45,7 +45,15 @@ func WithFields(fields... zapcore.Field) (*zap.Logger, *zap.SugaredLogger, *zap.
 
 
 func createLogger() (*zap.Logger, *zap.Config){
-	zapConfig := zap.NewDevelopmentConfig()
+
+	_ ,exist := os.LookupEnv("XLN_ZAP_PRODUCTION")
+	var zapConfig zap.Config
+	if exist {
+		zapConfig = zap.NewProductionConfig()
+	}else {
+		zapConfig = zap.NewDevelopmentConfig()
+	}
+
 	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	l, err := zapConfig.Build(
 		zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))

@@ -13,6 +13,7 @@ type LogEntry struct {
 type Logs struct {
 	Log []*LogEntry
 	Offset int
+	IncludedTerm int
 }
 
 func NewLogs() *Logs {
@@ -42,9 +43,10 @@ func (lgs *Logs) LogIndexToArrayIndex(logIndex int) int {
 	return arrayIndex
 }
 
-func (lgs *Logs) GetEntries(from int, to int) []*LogEntry {
+func (lgs *Logs) GetEntriesByIndex(from int, to int) []*LogEntry {
 
 	from = from - 1 - lgs.Offset
+	//if from < 0
 
 	if to == -1 {
 		to = len(lgs.Log)
@@ -54,23 +56,23 @@ func (lgs *Logs) GetEntries(from int, to int) []*LogEntry {
 	slice := lgs.Log[from: to]
 	return slice
 }
-
+/*
 func (lgs* Logs) GetLogEntries(from int, to int) []*LogEntry{
 
-	slice := lgs.GetEntries(from, to)
+	slice := lgs.GetEntriesByIndex(from, to)
 
-	entries := make([]*LogEntry, len(slice))
-	for i, entry :=  range slice {
-		entries[i] = entry
-	}
-	return entries
+	//entries := make([]*LogEntry, len(slice))
+	//for i, entry :=  range slice {
+	//	entries[i] = entry
+	//}
+	return slice///entries
 }
-
-func (lgs *Logs) GetLogFromLast(offset int) (int, *LogEntry, int) {
+*/
+func (lgs *Logs) GetEntriesFromLastByIndex(offset int) (int, *LogEntry, int) {
 
 	len := len(lgs.Log)
 	index := len - offset - 1
-	term := 0
+	term := lgs.IncludedTerm
 	var result *LogEntry = nil
 
 	if index >= 0 {
@@ -79,11 +81,11 @@ func (lgs *Logs) GetLogFromLast(offset int) (int, *LogEntry, int) {
 			term = result.Term
 		}
 	}
-	return index + 1, result, term
+	return index + 1 + lgs.Offset, result, term
 
 }
 
-func (lgs *Logs) GetLogFromIndex(index int) (int, *LogEntry, int) {
+func (lgs *Logs) GetEntryByIndex(index int) (int, *LogEntry, int) {
 
 	index -= lgs.Offset
 
@@ -115,6 +117,19 @@ func (lgs *Logs) ToString() string {
 func (lgs *Logs) AppendEntries(entries ...*LogEntry) {
 	lgs.Log = append(lgs.Log, entries...)
 }
+
+func (lgs *Logs) FirstEntry() (int, *LogEntry, int) {
+	if len(lgs.Log) > 0 {
+		return lgs.Offset, lgs.Log[0], lgs.Log[0].Term
+	}
+
+	return lgs.Offset, nil, lgs.IncludedTerm
+}
+
+func (lgs *Logs) FirstIndex() int {
+
+	return lgs.Offset
+}
 /*
 func (lgs *Logs) AppendInterface(interfaces ...interface{}) {
 
@@ -129,7 +144,7 @@ func (lgs *Logs) ReplaceEntriesFrom(entries []*LogEntry, offset int,  discard bo
 	}
 }
 
-func (lgs *Logs) GetEntriesFrom(from int) []*LogEntry {
+func (lgs *Logs) GetEntriesFromByIndex(from int) []*LogEntry {
 
 	arrayIndex := lgs.LogIndexToArrayIndex(from)
 	if arrayIndex < 0 {
@@ -155,10 +170,25 @@ func (lgs* Logs) GetEntry(index int) *LogEntry{
 	return lgs.Log[index - lgs.Offset]
 }
 
-func (lgs* Logs)DiscardBefore(index int) {
+func (lgs* Logs) GetEntryByLogIndex(index int) *LogEntry{
 	arrayIndex := lgs.LogIndexToArrayIndex(index)
-	lgs.Offset = index
-	lgs.Log = lgs.Log[arrayIndex:len(lgs.Log)]
+	return lgs.Log[arrayIndex]
+}
+
+
+//return false index already get discarded
+func (lgs* Logs)DiscardBefore(index int) bool {
+
+	if lgs.Offset < index {
+		arrayIndex := lgs.LogIndexToArrayIndex(index)
+		lgs.Offset = index
+		lgs.IncludedTerm = lgs.Log[arrayIndex].Term
+		lgs.Log = lgs.Log[arrayIndex + 1:len(lgs.Log)]
+
+		return true
+	} else {
+		return false
+	}
 }
 
 

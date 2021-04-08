@@ -2,6 +2,8 @@ package raft
 
 import (
 	//"encoding/gob"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 )
 
@@ -11,8 +13,8 @@ type LogEntry struct {
 }
 
 type Logs struct {
-	Log []*LogEntry
-	Offset int
+	Log          []*LogEntry
+	offset       int
 	IncludedTerm int
 }
 
@@ -39,19 +41,19 @@ func toString(entries []*LogEntry, offset int) string {
 
 func (lgs *Logs) LogIndexToArrayIndex(logIndex int) int {
 
-	arrayIndex := LogIndexToArrayIndex(logIndex - lgs.Offset)
+	arrayIndex := LogIndexToArrayIndex(logIndex - lgs.offset)
 	return arrayIndex
 }
 
 func (lgs *Logs) GetEntriesByIndex(from int, to int) []*LogEntry {
 
-	from = from - 1 - lgs.Offset
+	from = from - 1 - lgs.offset
 	//if from < 0
 
 	if to == -1 {
 		to = len(lgs.Log)
 	} else {
-		to = to - 1 - lgs.Offset
+		to = to - 1 - lgs.offset
 	}
 	slice := lgs.Log[from: to]
 	return slice
@@ -81,37 +83,33 @@ func (lgs *Logs) GetEntriesFromLastByIndex(offset int) (int, *LogEntry, int) {
 			term = result.Term
 		}
 	}
-	return index + 1 + lgs.Offset, result, term
+	return index + 1 + lgs.offset, result, term
 
 }
 
 func (lgs *Logs) GetEntryByIndex(index int) (int, *LogEntry, int) {
 
-	index -= lgs.Offset
-
-	if index <= 0 {
+	if index < lgs.FirstIndex() {
+		return 0,nil, 0
+	}
+	arrayIndex := index - lgs.offset - 1
+	if arrayIndex < 0 {
 		return 0, nil, 0
 	}
 
-	len := len(lgs.Log)
 	term := 0
-	index--
 	var result *LogEntry = nil
+	result = lgs.Log[arrayIndex]
+	term = result.Term
 
-	if index < len {
-		result = lgs.Log[index]
-		if result != nil {
-			term = result.Term
-		}
-	}
-	return index + 1, result, term
+	return index, result, term
 
 }
 
 
 func (lgs *Logs) ToString() string {
 
-	return toString(lgs.Log, lgs.Offset)
+	return toString(lgs.Log, lgs.offset)
 }
 
 func (lgs *Logs) AppendEntries(entries ...*LogEntry) {
@@ -120,15 +118,45 @@ func (lgs *Logs) AppendEntries(entries ...*LogEntry) {
 
 func (lgs *Logs) FirstEntry() (int, *LogEntry, int) {
 	if len(lgs.Log) > 0 {
-		return lgs.Offset, lgs.Log[0], lgs.Log[0].Term
+		return lgs.offset + 1, lgs.Log[0], lgs.Log[0].Term
 	}
 
-	return lgs.Offset, nil, lgs.IncludedTerm
+	return lgs.offset + 1, nil, -1
+}
+
+func (lgs *Logs) PrevEntry(index int) (int, *LogEntry, int) {
+
+	prevIndex := index - 1
+	if prevIndex <= lgs.offset {
+		return lgs.offset, nil, lgs.IncludedTerm
+	}
+
+	arrayIndex := lgs.LogIndexToArrayIndex(prevIndex)
+	return prevIndex, lgs.Log[arrayIndex], lgs.Log[arrayIndex].Term
+
 }
 
 func (lgs *Logs) FirstIndex() int {
+	//if len(lgs.Log) > 0 {
+	return lgs.offset + 1
+	//}
+	//return lgs.offset
+}
 
-	return lgs.Offset
+func (lgs *Logs) FirstTerm() int {
+
+	if len(lgs.Log) > 0 {
+		return lgs.Log[0].Term
+	}
+	return -1
+}
+
+func (lgs *Logs) Offset() int {
+	return lgs.offset
+}
+
+func (lgs *Logs) SetOffset(offset int) {
+	lgs.offset = offset
 }
 /*
 func (lgs *Logs) AppendInterface(interfaces ...interface{}) {
@@ -137,8 +165,9 @@ func (lgs *Logs) AppendInterface(interfaces ...interface{}) {
 }
 */
 func (lgs *Logs) ReplaceEntriesFrom(entries []*LogEntry, offset int,  discard bool) {
+
 	if discard {
-		lgs.Log = append(lgs.Log[0:offset-lgs.Offset], entries...)
+		lgs.Log = append(lgs.Log[0:offset-lgs.offset], entries...)
 	} else {
 
 	}
@@ -163,11 +192,11 @@ func (lgs* Logs) Len() int {
 }
 
 func (lgs* Logs) LastIndex() int {
-	return lgs.Len() + lgs.Offset
+	return lgs.Len() + lgs.offset
 }
 
 func (lgs* Logs) GetEntry(index int) *LogEntry{
-	return lgs.Log[index - lgs.Offset]
+	return lgs.Log[index - lgs.offset]
 }
 
 func (lgs* Logs) GetEntryByLogIndex(index int) *LogEntry{
@@ -177,19 +206,65 @@ func (lgs* Logs) GetEntryByLogIndex(index int) *LogEntry{
 
 
 //return false index already get discarded
-func (lgs* Logs)DiscardBefore(index int) bool {
+func (lgs* Logs)SnapShot(index int) (bool, []byte, int) {
 
-	if lgs.Offset < index {
+	if index > lgs.offset  {
 		arrayIndex := lgs.LogIndexToArrayIndex(index)
-		lgs.Offset = index
+		lgs.offset = index
 		lgs.IncludedTerm = lgs.Log[arrayIndex].Term
 		lgs.Log = lgs.Log[arrayIndex + 1:len(lgs.Log)]
 
-		return true
+		return true, lgs.Encode(), lgs.IncludedTerm
 	} else {
-		return false
+		return false, nil, -1
 	}
 }
+
+func (lgs *Logs)Encode() []byte {
+
+	w := new(bytes.Buffer)
+	e := gob.NewEncoder(w)
+
+	err := e.Encode(lgs.Offset())//e.Encode(rf.logs.Log)
+	if err != nil {
+		panic("persist error")
+	}
+	err = e.Encode(lgs.IncludedTerm)
+	if err != nil {
+		panic("persist error")
+	}
+	err = e.Encode(lgs.Log)//e.Encode(rf.logs.Log)
+	if err != nil {
+		panic("persist error")
+	}
+
+	data := w.Bytes()
+	return data
+}
+
+func (lgs *Logs)RestoreSnapshot(byte []byte) {
+
+	//clear log
+	lgs.Log = make([]*LogEntry, 0)
+
+	d := gob.NewDecoder(bytes.NewBuffer(byte))
+	err := d.Decode(&lgs.offset)
+	if err != nil {
+		panic("decode error")
+	}
+	err = d.Decode(&lgs.IncludedTerm)
+	if err != nil {
+		panic("decode error")
+	}
+
+	err = d.Decode(&lgs.Log)
+	if err != nil {
+		panic("decode error")
+	}
+
+
+}
+
 
 
 

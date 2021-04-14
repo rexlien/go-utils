@@ -242,7 +242,7 @@ func (lgs *Logs)Encode() []byte {
 	return data
 }
 
-func (lgs *Logs)RestoreSnapshot(byte []byte) {
+func (lgs *Logs)Decode(byte []byte) {
 
 	//clear log
 	lgs.Log = make([]*LogEntry, 0)

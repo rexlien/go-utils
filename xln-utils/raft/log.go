@@ -127,9 +127,14 @@ func (lgs *Logs) FirstEntry() (int, *LogEntry, int) {
 func (lgs *Logs) PrevEntry(index int) (int, *LogEntry, int) {
 
 	prevIndex := index - 1
-	if prevIndex <= lgs.offset {
+	if prevIndex < 0 {
+		panic("index out of bound")
+	}
+
+	if prevIndex == lgs.offset {
 		return lgs.offset, nil, lgs.IncludedTerm
 	}
+
 
 	arrayIndex := lgs.LogIndexToArrayIndex(prevIndex)
 	return prevIndex, lgs.Log[arrayIndex], lgs.Log[arrayIndex].Term

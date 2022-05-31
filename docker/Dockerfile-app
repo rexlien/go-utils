@@ -1,0 +1,19 @@
+FROM golang:1.17
+
+#ARG BUILD_OUTPUT
+#ARG BUILD_INPUT
+ARG BIN_PATH
+ARG RESOURCE_PATH
+
+WORKDIR /go/src/app
+RUN apt-get update && apt install -y protobuf-compiler
+RUN go get google.golang.org/protobuf/cmd/protoc-gen-go && go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+
+#COPY . .
+COPY ${BIN_PATH} bin/
+#RUN export GO111MODULE="on" && go mod download
+#RUN export GO111MODULE="on" GOOS=linux GOARCH=amd64 && go build -o ${BUILD_OUTPUT} ${BUILD_INPUT}
+
+
+ENTRYPOINT bin/${XLN_RUN_PATH}
